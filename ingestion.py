@@ -38,8 +38,47 @@ tavily_map = TavilyMap(max_depth=5, max_breadth=20, max_pages=1000)
 tavily_crawl = TavilyCrawl()
 
 async def main():
-    print("Hello from langchain-ai!")
+    """Main async function to orchestrate the entire process."""
+    log_header("Document Ingestion Pipeline")
+    log_info(
+        "🗺️  TavilyCrawl: Starting to crawl the documentation site",
+        Colors.PURPLE,
+    )
+    # Crawl the documentation site
 
+    res = tavily_crawl.invoke(
+        {
+            "url": "https://python.langchain.com/",
+            "max_depth": 2,
+            "extract_depth": "advanced",
+            # "instructions": "content on ai agents",
+        }
+    )
+
+    # Convert Tavily crawl results to LangChain Document objects
+    all_docs = []
+    for tavily_crawl_result_item in res["results"]:
+        log_info(
+            f"TavilyCrawl: Successfully crawled {tavily_crawl_result_item['url']} from documentation site"
+        )
+        all_docs.append(
+            Document(
+                page_content=tavily_crawl_result_item["raw_content"],
+                metadata={"source": tavily_crawl_result_item["url"]},
+            )
+        )
+
+    # Split documents into chunks
+    log_header("DOCUMENT CHUNKING PHASE")
+    log_info(
+        f"✂️  Text Splitter: Processing {len(all_docs)} documents with 4000 chunk size and 200 overlap",
+        Colors.YELLOW,
+    )
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
+    splitted_docs = text_splitter.split_documents(all_docs)
+    log_success(
+        f"Text Splitter: Created {len(splitted_docs)} chunks from {len(all_docs)} documents"
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
